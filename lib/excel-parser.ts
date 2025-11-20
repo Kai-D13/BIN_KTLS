@@ -8,7 +8,7 @@ export interface ParsedExcelData {
 
 export function parseExcelFile(
   file: File,
-  weekNumber: number
+  weekLabel: string
 ): Promise<ParsedExcelData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -47,7 +47,8 @@ export function parseExcelFile(
               cust_province: row.cust_province || null,
               employee_id: row.employee_id ? Number(row.employee_id) : null,
               employee_name: row.employee_name || null,
-              week_number: weekNumber,
+              week_label: weekLabel,
+              deadline_for_recovery: row['HẠN THU HỒI'] || null,
             };
 
             parsedData.push(record);

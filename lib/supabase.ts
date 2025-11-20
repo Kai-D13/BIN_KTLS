@@ -23,16 +23,17 @@ export interface BinRecord {
   cust_province: string | null;
   employee_id: number | null;
   employee_name: string | null;
-  week_number: number;
+  week_label: string;  // "Tuần 1 - Tháng 11"
   import_date?: string;
   created_at?: string;
+  deadline_for_recovery?: string;
 }
 
 export interface ImportHistory {
   id?: string;
   file_name: string;
   file_type: 'pending' | 'compensation';
-  week_number: number;
+  week_label: string;  // "Tuần 1 - Tháng 11"
   total_rows: number;
   success_rows: number;
   failed_rows: number;

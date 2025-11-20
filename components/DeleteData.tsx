@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 
@@ -9,13 +9,38 @@ interface DeleteDataProps {
 }
 
 export default function DeleteData({ tableType }: DeleteDataProps) {
-  const [weekNumber, setWeekNumber] = useState<number>(1);
+  const [weekLabel, setWeekLabel] = useState<string>('');
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
   const tableLabel = tableType === 'pending' ? 'Danh sách cần thu hồi' : 'Chốt đền bù';
+
+  // Fetch available weeks from database
+  useEffect(() => {
+    fetchAvailableWeeks();
+  }, [tableType]);
+
+  const fetchAvailableWeeks = async () => {
+    try {
+      const { data } = await supabase
+        .from(tableName)
+        .select('week_label')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const uniqueWeeks = [...new Set(data.map(row => row.week_label))];
+        setAvailableWeeks(uniqueWeeks);
+        if (uniqueWeeks.length > 0 && !weekLabel) {
+          setWeekLabel(uniqueWeeks[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching weeks:', error);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -26,7 +51,7 @@ export default function DeleteData({ tableType }: DeleteDataProps) {
       const { error, count } = await supabase
         .from(tableName)
         .delete({ count: 'exact' })
-        .eq('week_number', weekNumber);
+        .eq('week_label', weekLabel);
 
       if (error) {
         setResult({
@@ -39,12 +64,15 @@ export default function DeleteData({ tableType }: DeleteDataProps) {
           .from('import_history')
           .delete()
           .eq('file_type', tableType)
-          .eq('week_number', weekNumber);
+          .eq('week_label', weekLabel);
 
         setResult({
           success: true,
-          message: `Đã xóa thành công ${count || 0} bản ghi của tuần ${weekNumber}`,
+          message: `Đã xóa thành công ${count || 0} bản ghi của ${weekLabel}`,
         });
+
+        // Refresh available weeks
+        fetchAvailableWeeks();
       }
     } catch (error: any) {
       setResult({
@@ -65,28 +93,32 @@ export default function DeleteData({ tableType }: DeleteDataProps) {
       </div>
 
       <div className="flex items-end gap-3">
-        <div>
+        <div className="flex-1">
           <label htmlFor="delete-week" className="block text-sm font-medium text-gray-700 mb-2">
             Chọn tuần cần xóa
           </label>
           <select
             id="delete-week"
-            value={weekNumber}
-            onChange={(e) => setWeekNumber(Number(e.target.value))}
-            disabled={deleting}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+            value={weekLabel}
+            onChange={(e) => setWeekLabel(e.target.value)}
+            disabled={deleting || availableWeeks.length === 0}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none disabled:bg-gray-100"
           >
-            {[1, 2, 3, 4].map((week) => (
-              <option key={week} value={week}>
-                Tuần {week}
-              </option>
-            ))}
+            {availableWeeks.length === 0 ? (
+              <option value="">Không có dữ liệu</option>
+            ) : (
+              availableWeeks.map((week) => (
+                <option key={week} value={week}>
+                  {week}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
         <button
           onClick={() => setShowConfirm(true)}
-          disabled={deleting}
+          disabled={deleting || availableWeeks.length === 0}
           className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
         >
           {deleting ? (
@@ -113,7 +145,7 @@ export default function DeleteData({ tableType }: DeleteDataProps) {
             </div>
             <p className="text-gray-700 mb-6">
               Bạn có chắc chắn muốn xóa <strong>TOÀN BỘ</strong> dữ liệu của{' '}
-              <strong className="text-red-600">Tuần {weekNumber}</strong> trong bảng{' '}
+              <strong className="text-red-600">{weekLabel}</strong> trong bảng{' '}
               <strong>{tableLabel}</strong>?
               <br />
               <br />

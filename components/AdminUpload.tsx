@@ -9,9 +9,32 @@ interface AdminUploadProps {
   tableType: 'pending' | 'compensation';
 }
 
+// Generate week options (9 weeks)
+const generateWeekOptions = () => {
+  const options: { value: string; label: string }[] = [];
+  const today = new Date();
+  
+  // Get current month and year
+  const currentMonth = today.getMonth() + 1; // 1-12
+  const currentYear = today.getFullYear();
+  
+  // Generate options for current month and next 2 months
+  for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+    const month = ((currentMonth - 1 + monthOffset) % 12) + 1;
+    const year = currentYear + Math.floor((currentMonth - 1 + monthOffset) / 12);
+    
+    for (let week = 1; week <= 4; week++) {
+      const label = `Tuần ${week} - Tháng ${month}`;
+      options.push({ value: label, label });
+    }
+  }
+  
+  return options.slice(0, 9); // Only return 9 weeks
+};
+
 export default function AdminUpload({ tableType }: AdminUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [weekNumber, setWeekNumber] = useState<number>(1);
+  const [weekLabel, setWeekLabel] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -20,6 +43,7 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
   } | null>(null);
 
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
+  const weekOptions = generateWeekOptions();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -37,12 +61,20 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
       return;
     }
 
+    if (!weekLabel) {
+      setResult({
+        success: false,
+        message: 'Vui lòng chọn tuần',
+      });
+      return;
+    }
+
     setUploading(true);
     setResult(null);
 
     try {
       // Parse Excel file
-      const { data, errors } = await parseExcelFile(file, weekNumber);
+      const { data, errors } = await parseExcelFile(file, weekLabel);
 
       if (errors.length > 0) {
         setResult({
@@ -70,7 +102,7 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
         await supabase.from('import_history').insert({
           file_name: file.name,
           file_type: tableType,
-          week_number: weekNumber,
+          week_label: weekLabel,
           total_rows: data.length,
           success_rows: data.length,
           failed_rows: 0,
@@ -78,7 +110,7 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
 
         setResult({
           success: true,
-          message: `Upload thành công ${data.length} records vào tuần ${weekNumber}`,
+          message: `Upload thành công ${data.length} records vào ${weekLabel}`,
         });
         setFile(null);
       }
@@ -109,19 +141,20 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
           />
         </div>
 
-        <div className="w-32">
+        <div className="flex-1">
           <label htmlFor="week-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Tuần
+            📅 Chọn tuần
           </label>
           <select
             id="week-select"
-            value={weekNumber}
-            onChange={(e) => setWeekNumber(Number(e.target.value))}
+            value={weekLabel}
+            onChange={(e) => setWeekLabel(e.target.value)}
             className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
           >
-            {[1, 2, 3, 4].map((week) => (
-              <option key={week} value={week}>
-                Tuần {week}
+            <option value="">-- Chọn tuần --</option>
+            {weekOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

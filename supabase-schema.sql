@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS bin_pickup_pending (
   cust_province TEXT,
   employee_id NUMERIC,
   employee_name TEXT,
-  week_number INTEGER NOT NULL,
+  week_label TEXT NOT NULL,  -- "Tuần 1 - Tháng 11", "Tuần 2 - Tháng 12"
   import_date TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS bin_compensation (
   cust_province TEXT,
   employee_id NUMERIC,
   employee_name TEXT,
-  week_number INTEGER NOT NULL,
+  week_label TEXT NOT NULL,  -- "Tuần 1 - Tháng 11", "Tuần 2 - Tháng 12"
   import_date TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS import_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_name TEXT NOT NULL,
   file_type TEXT NOT NULL CHECK (file_type IN ('pending', 'compensation')),
-  week_number INTEGER NOT NULL,
+  week_label TEXT NOT NULL,  -- "Tuần 1 - Tháng 11"
   total_rows INTEGER NOT NULL DEFAULT 0,
   success_rows INTEGER NOT NULL DEFAULT 0,
   failed_rows INTEGER NOT NULL DEFAULT 0,
@@ -62,13 +62,13 @@ CREATE TABLE IF NOT EXISTS import_history (
 CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_hub ON bin_pickup_pending(hub_name);
 CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_employee ON bin_pickup_pending(employee_name);
 CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_bin_code ON bin_pickup_pending(bin_code);
-CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_week ON bin_pickup_pending(week_number);
+CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_week_label ON bin_pickup_pending(week_label);
 CREATE INDEX IF NOT EXISTS idx_bin_pickup_pending_created_at ON bin_pickup_pending(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_bin_compensation_hub ON bin_compensation(hub_name);
 CREATE INDEX IF NOT EXISTS idx_bin_compensation_employee ON bin_compensation(employee_name);
 CREATE INDEX IF NOT EXISTS idx_bin_compensation_bin_code ON bin_compensation(bin_code);
-CREATE INDEX IF NOT EXISTS idx_bin_compensation_week ON bin_compensation(week_number);
+CREATE INDEX IF NOT EXISTS idx_bin_compensation_week_label ON bin_compensation(week_label);
 CREATE INDEX IF NOT EXISTS idx_bin_compensation_created_at ON bin_compensation(created_at);
 
 -- Enable Row Level Security (RLS)
@@ -101,13 +101,13 @@ CREATE POLICY "Allow public insert on import_history"
   ON import_history FOR INSERT 
   WITH CHECK (true);
 
--- Function to delete records older than 28 days (4 weeks)
+-- Function to delete records older than 63 days (9 weeks)
 CREATE OR REPLACE FUNCTION delete_old_records()
 RETURNS void AS $$
 BEGIN
-  DELETE FROM bin_pickup_pending WHERE created_at < NOW() - INTERVAL '28 days';
-  DELETE FROM bin_compensation WHERE created_at < NOW() - INTERVAL '28 days';
-  DELETE FROM import_history WHERE uploaded_at < NOW() - INTERVAL '28 days';
+  DELETE FROM bin_pickup_pending WHERE created_at < NOW() - INTERVAL '63 days';
+  DELETE FROM bin_compensation WHERE created_at < NOW() - INTERVAL '63 days';
+  DELETE FROM import_history WHERE uploaded_at < NOW() - INTERVAL '63 days';
 END;
 $$ LANGUAGE plpgsql;
 
