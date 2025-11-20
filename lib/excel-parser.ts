@@ -48,7 +48,6 @@ export function parseExcelFile(
               employee_id: row.employee_id ? Number(row.employee_id) : null,
               employee_name: row.employee_name || null,
               week_label: weekLabel,
-              deadline_for_recovery: row['HẠN THU HỒI'] || null,
             };
 
             parsedData.push(record);

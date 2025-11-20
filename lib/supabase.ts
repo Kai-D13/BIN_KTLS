@@ -26,7 +26,6 @@ export interface BinRecord {
   week_label: string;  // "Tuần 1 - Tháng 11"
   import_date?: string;
   created_at?: string;
-  deadline_for_recovery?: string;
 }
 
 export interface ImportHistory {
