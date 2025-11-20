@@ -9,7 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "BIN Recovery System - KTLS",
-  description: "Hệ thống quản lý thu hồi BIN - Miền Tây",
+  description: "Hệ thống thu hồi BIN",
 };
 
 export default function RootLayout({

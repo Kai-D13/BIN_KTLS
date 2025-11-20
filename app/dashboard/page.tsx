@@ -42,7 +42,7 @@ export default function DashboardPage() {
                 📊 BIN Recovery Management System
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                Hệ thống quản lý thu hồi BIN - Miền Tây
+                Hệ thống thu hồi BIN
               </p>
             </div>
             <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
