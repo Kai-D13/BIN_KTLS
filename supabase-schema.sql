@@ -85,6 +85,10 @@ CREATE POLICY "Allow public insert on bin_pickup_pending"
   ON bin_pickup_pending FOR INSERT 
   WITH CHECK (true);
 
+CREATE POLICY "Allow public delete on bin_pickup_pending" 
+  ON bin_pickup_pending FOR DELETE 
+  USING (true);
+
 CREATE POLICY "Allow public read access on bin_compensation" 
   ON bin_compensation FOR SELECT 
   USING (true);
@@ -93,6 +97,10 @@ CREATE POLICY "Allow public insert on bin_compensation"
   ON bin_compensation FOR INSERT 
   WITH CHECK (true);
 
+CREATE POLICY "Allow public delete on bin_compensation" 
+  ON bin_compensation FOR DELETE 
+  USING (true);
+
 CREATE POLICY "Allow public read access on import_history" 
   ON import_history FOR SELECT 
   USING (true);
@@ -100,6 +108,10 @@ CREATE POLICY "Allow public read access on import_history"
 CREATE POLICY "Allow public insert on import_history" 
   ON import_history FOR INSERT 
   WITH CHECK (true);
+
+CREATE POLICY "Allow public delete on import_history" 
+  ON import_history FOR DELETE 
+  USING (true);
 
 -- Function to delete records older than 63 days (9 weeks)
 CREATE OR REPLACE FUNCTION delete_old_records()
