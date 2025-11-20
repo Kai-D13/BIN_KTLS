@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { parseExcelFile } from '@/lib/excel-parser';
+import { useState, useEffect } from 'react';
+import { parseExcelFile, getSheetNames } from '@/lib/excel-parser';
 import { supabase } from '@/lib/supabase';
 import { Upload, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
@@ -35,6 +35,8 @@ const generateWeekOptions = () => {
 export default function AdminUpload({ tableType }: AdminUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [weekLabel, setWeekLabel] = useState<string>('');
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -45,10 +47,22 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
   const weekOptions = generateWeekOptions();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
       setResult(null);
+      
+      try {
+        const sheets = await getSheetNames(selectedFile);
+        setSheetNames(sheets);
+        setSelectedSheet(sheets[0] || ''); // Auto-select first sheet
+      } catch (error) {
+        setResult({
+          success: false,
+          message: 'Không thể đọc danh sách sheet trong file',
+        });
+      }
     }
   };
 
@@ -74,7 +88,7 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
 
     try {
       // Parse Excel file
-      const { data, errors } = await parseExcelFile(file, weekLabel);
+      const { data, errors } = await parseExcelFile(file, weekLabel, selectedSheet);
 
       if (errors.length > 0) {
         setResult({
@@ -127,24 +141,46 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
-            📁 Chọn file Excel
-          </label>
-          <input
-            id="file-upload"
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-          />
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
+              📁 Chọn file Excel
+            </label>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+            />
+          </div>
         </div>
 
-        <div className="flex-1">
-          <label htmlFor="week-select" className="block text-sm font-medium text-gray-700 mb-2">
-            📅 Chọn tuần
-          </label>
+        {sheetNames.length > 0 && (
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label htmlFor="sheet-select" className="block text-sm font-medium text-gray-700 mb-2">
+                📄 Chọn sheet
+              </label>
+              <select
+                id="sheet-select"
+                value={selectedSheet}
+                onChange={(e) => setSelectedSheet(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              >
+                {sheetNames.map((sheet) => (
+                  <option key={sheet} value={sheet}>
+                    {sheet}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label htmlFor="week-select" className="block text-sm font-medium text-gray-700 mb-2">
+                📅 Chọn tuần
+              </label>
           <select
             id="week-select"
             value={weekLabel}
@@ -157,28 +193,30 @@ export default function AdminUpload({ tableType }: AdminUploadProps) {
                 {option.label}
               </option>
             ))}
-          </select>
-        </div>
+            </select>
+          </div>
 
-        <div className="pt-7">
-          <button
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Đang upload...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                Upload File
-              </>
-            )}
-          </button>
+          <div className="pt-7">
+            <button
+              onClick={handleUpload}
+              disabled={!file || uploading}
+              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang upload...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload File
+                </>
+              )}
+            </button>
+          </div>
         </div>
+      )}
       </div>
 
       {file && (

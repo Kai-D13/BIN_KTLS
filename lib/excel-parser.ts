@@ -6,9 +6,27 @@ export interface ParsedExcelData {
   errors: string[];
 }
 
+export function getSheetNames(file: File): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        resolve(workbook.SheetNames);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsBinaryString(file);
+  });
+}
+
 export function parseExcelFile(
   file: File,
-  weekLabel: string
+  weekLabel: string,
+  sheetName?: string
 ): Promise<ParsedExcelData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -17,8 +35,8 @@ export function parseExcelFile(
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        const selectedSheet = sheetName || workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[selectedSheet];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
         const parsedData: BinRecord[] = [];
