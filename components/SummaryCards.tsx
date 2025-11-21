@@ -27,7 +27,7 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      let query = supabase.from(tableName).select('*');
+      let query = supabase.from(tableName).select('*', { count: 'exact' });
 
       // Apply filters
       if (hubName) {
@@ -42,7 +42,7 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
         );
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
@@ -51,7 +51,7 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
         const uniqueHubs = new Set(data.map((row: BinRecord) => row.hub_name).filter(Boolean));
 
         setStats({
-          totalBins: data.length,
+          totalBins: count || 0,
           totalCustomers: uniqueCustomers.size,
           totalHubs: uniqueHubs.size,
         });
