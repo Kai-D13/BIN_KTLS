@@ -90,18 +90,18 @@ export function parseExcelFile(
 
 export function exportToExcel(data: BinRecord[], filename: string) {
   const worksheet = XLSX.utils.json_to_sheet(data.map(record => ({
-    'BIN Code': record.bin_code,
-    'HUB Name': record.hub_name,
-    'Mã đơn': record.ma_don,
-    'Reference Code': record.reference_code,
-    'Reference Code OF SO': record.reference_code_of_so,
-    'Customer Name': record.cust_name,
-    'Address': record.cust_address,
-    'Ward': record.cust_ward,
-    'District': record.cust_district,
-    'Province': record.cust_province,
-    'Employee ID': record.employee_id,
-    'Employee Name': record.employee_name,
+    'Mã BIN': record.bin_code,
+    'HUB': record.hub_name,
+    'Mã Thu Hồi': record.ma_don,
+    'Mã Đơn Hàng (Reference Code)': record.reference_code,
+    'Mã Đơn Hàng (OF SO)': record.reference_code_of_so,
+    'Khách hàng': record.cust_name,
+    'Địa chỉ': record.cust_address,
+    'Phường/Xã': record.cust_ward,
+    'Quận/Huyện': record.cust_district,
+    'Tỉnh/Thành phố': record.cust_province,
+    'Mã Nhân viên': record.employee_id,
+    'Tên Nhân viên': record.employee_name,
   })));
 
   const workbook = XLSX.utils.book_new();

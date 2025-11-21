@@ -65,7 +65,7 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
 
   const cards = [
     {
-      title: 'Tổng BIN Code',
+      title: 'Tổng Mã BIN',
       value: stats.totalBins,
       icon: Package,
       color: 'bg-blue-500',
