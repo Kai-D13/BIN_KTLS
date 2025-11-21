@@ -120,6 +120,7 @@ export default function DataTable({ tableType }: DataTableProps) {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">BIN Code</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">HUB Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Mã đơn</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Reference Code</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Khách hàng</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Địa chỉ</th>
@@ -130,7 +131,7 @@ export default function DataTable({ tableType }: DataTableProps) {
           <tbody className="divide-y divide-gray-200">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                   Không tìm thấy dữ liệu
                 </td>
               </tr>
@@ -139,6 +140,7 @@ export default function DataTable({ tableType }: DataTableProps) {
                 <tr key={record.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3 text-sm font-medium text-indigo-600">{record.bin_code}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.hub_name || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{record.ma_don || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.reference_code_of_so || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.cust_name || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{record.cust_address || '-'}</td>
@@ -167,6 +169,10 @@ export default function DataTable({ tableType }: DataTableProps) {
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Mã đơn:</span>
+                  <span className="text-gray-700 truncate ml-2">{record.ma_don || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Reference Code:</span>
                   <span className="text-gray-700 truncate ml-2">{record.reference_code_of_so || '-'}</span>
                 </div>
                 <div className="flex justify-between">

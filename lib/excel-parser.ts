@@ -92,6 +92,7 @@ export function exportToExcel(data: BinRecord[], filename: string) {
   const worksheet = XLSX.utils.json_to_sheet(data.map(record => ({
     'BIN Code': record.bin_code,
     'HUB Name': record.hub_name,
+    'Mã đơn': record.ma_don,
     'Reference Code': record.reference_code,
     'Reference Code OF SO': record.reference_code_of_so,
     'Customer Name': record.cust_name,
