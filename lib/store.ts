@@ -40,9 +40,11 @@ interface FilterStore {
   hubName: string;
   employeeName: string;
   searchText: string;
+  weekLabel: string;
   setHubName: (hub: string) => void;
   setEmployeeName: (employee: string) => void;
   setSearchText: (text: string) => void;
+  setWeekLabel: (week: string) => void;
   resetFilters: () => void;
 }
 
@@ -50,8 +52,10 @@ export const useFilterStore = create<FilterStore>((set) => ({
   hubName: '',
   employeeName: '',
   searchText: '',
+  weekLabel: '',
   setHubName: (hub) => set({ hubName: hub }),
   setEmployeeName: (employee) => set({ employeeName: employee }),
   setSearchText: (text) => set({ searchText: text }),
-  resetFilters: () => set({ hubName: '', employeeName: '', searchText: '' }),
+  setWeekLabel: (week) => set({ weekLabel: week }),
+  resetFilters: () => set({ hubName: '', employeeName: '', searchText: '', weekLabel: '' }),
 }));

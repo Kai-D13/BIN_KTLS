@@ -11,7 +11,7 @@ interface DataTableProps {
 }
 
 export default function DataTable({ tableType }: DataTableProps) {
-  const { hubName, employeeName, searchText } = useFilterStore();
+  const { hubName, employeeName, searchText, weekLabel } = useFilterStore();
   const [data, setData] = useState<BinRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,7 +22,7 @@ export default function DataTable({ tableType }: DataTableProps) {
 
   useEffect(() => {
     fetchData();
-  }, [hubName, employeeName, searchText, tableType, currentPage]);
+  }, [hubName, employeeName, searchText, weekLabel, tableType, currentPage]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -30,6 +30,9 @@ export default function DataTable({ tableType }: DataTableProps) {
       let query = supabase.from(tableName).select('*', { count: 'exact' });
 
       // Apply filters
+      if (weekLabel) {
+        query = query.eq('week_label', weekLabel);
+      }
       if (hubName) {
         query = query.eq('hub_name', hubName);
       }
@@ -64,6 +67,7 @@ export default function DataTable({ tableType }: DataTableProps) {
     try {
       let query = supabase.from(tableName).select('*');
 
+      if (weekLabel) query = query.eq('week_label', weekLabel);
       if (hubName) query = query.eq('hub_name', hubName);
       if (employeeName) query = query.eq('employee_name', employeeName);
       if (searchText) {

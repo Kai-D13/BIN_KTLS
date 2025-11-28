@@ -10,15 +10,17 @@ interface FilterPanelProps {
 }
 
 export default function FilterPanel({ tableType }: FilterPanelProps) {
-  const { hubName, employeeName, searchText, setHubName, setEmployeeName, setSearchText, resetFilters } = useFilterStore();
+  const { hubName, employeeName, searchText, weekLabel, setHubName, setEmployeeName, setSearchText, setWeekLabel, resetFilters } = useFilterStore();
   const [hubs, setHubs] = useState<string[]>([]);
   const [employees, setEmployees] = useState<string[]>([]);
+  const [weeks, setWeeks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
 
   useEffect(() => {
     fetchHubs();
+    fetchWeeks();
   }, [tableType]);
 
   // Fetch employees when hub changes
@@ -75,6 +77,22 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
     }
   };
 
+  const fetchWeeks = async () => {
+    try {
+      const { data } = await supabase
+        .from(tableName)
+        .select('week_label')
+        .not('week_label', 'is', null);
+
+      if (data) {
+        const uniqueWeeks = Array.from(new Set(data.map((row) => row.week_label))).sort();
+        setWeeks(uniqueWeeks as string[]);
+      }
+    } catch (error) {
+      console.error('Error fetching weeks:', error);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -82,11 +100,32 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
         <h2 className="text-base sm:text-lg font-semibold text-gray-800">Bộ lọc</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Week Filter */}
+        <div>
+          <label htmlFor="week-select" className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+            📅 Tuần
+          </label>
+          <select
+            id="week-select"
+            value={weekLabel}
+            onChange={(e) => setWeekLabel(e.target.value)}
+            disabled={loading}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none disabled:bg-gray-100"
+          >
+            <option value="">Tất cả tuần</option>
+            {weeks.map((week) => (
+              <option key={week} value={week}>
+                {week}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* HUB Filter */}
         <div>
           <label htmlFor="hub-select" className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-            🏢 HUB Name
+            🏢 HUB
           </label>
           <select
             id="hub-select"
@@ -144,7 +183,7 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
       </div>
 
       {/* Reset Button */}
-      {(hubName || employeeName || searchText) && (
+      {(weekLabel || hubName || employeeName || searchText) && (
         <div className="mt-4">
           <button
             onClick={resetFilters}

@@ -10,7 +10,7 @@ interface SummaryCardsProps {
 }
 
 export default function SummaryCards({ tableType }: SummaryCardsProps) {
-  const { hubName, employeeName, searchText } = useFilterStore();
+  const { hubName, employeeName, searchText, weekLabel } = useFilterStore();
   const [stats, setStats] = useState({
     totalBins: 0,
     totalCustomers: 0,
@@ -22,7 +22,7 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
 
   useEffect(() => {
     fetchStats();
-  }, [hubName, employeeName, searchText, tableType]);
+  }, [hubName, employeeName, searchText, weekLabel, tableType]);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -30,6 +30,9 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
       let query = supabase.from(tableName).select('*', { count: 'exact' });
 
       // Apply filters
+      if (weekLabel) {
+        query = query.eq('week_label', weekLabel);
+      }
       if (hubName) {
         query = query.eq('hub_name', hubName);
       }
