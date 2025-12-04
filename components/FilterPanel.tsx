@@ -33,16 +33,24 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
   const fetchHubs = async () => {
     setLoading(true);
     try {
-      // Fetch unique hubs - tăng limit để lấy hết tất cả
-      const { data: hubsData } = await supabase
-        .from(tableName)
-        .select('hub_name')
-        .not('hub_name', 'is', null)
-        .limit(10000);
+      // Dùng RPC function để lấy distinct hubs (hiệu quả hơn)
+      const { data, error } = await supabase
+        .rpc('get_distinct_hubs', { table_name: tableName });
 
-      if (hubsData) {
-        const uniqueHubs = Array.from(new Set(hubsData.map((row) => row.hub_name))).sort();
-        setHubs(uniqueHubs as string[]);
+      if (error) {
+        console.error('RPC error, fallback to normal query:', error);
+        // Fallback: nếu RPC chưa có, dùng query thông thường
+        const { data: hubsData } = await supabase
+          .from(tableName)
+          .select('hub_name')
+          .not('hub_name', 'is', null);
+        
+        if (hubsData) {
+          const uniqueHubs = Array.from(new Set(hubsData.map((row) => row.hub_name))).sort();
+          setHubs(uniqueHubs);
+        }
+      } else if (data) {
+        setHubs(data.map((row: { hub_name: string }) => row.hub_name));
       }
     } catch (error) {
       console.error('Error fetching hubs:', error);
@@ -53,25 +61,39 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
 
   const fetchEmployees = async () => {
     try {
-      // Build query for employees - tăng limit để lấy hết
-      let query = supabase
-        .from(tableName)
-        .select('employee_name')
-        .not('employee_name', 'is', null)
-        .limit(10000);
+      // Dùng RPC function với hub filter
+      const { data, error } = await supabase
+        .rpc('get_distinct_employees', { 
+          table_name: tableName,
+          selected_hub: hubName || null
+        });
 
-      // If hub is selected, filter employees by that hub
-      if (hubName) {
-        query = query.eq('hub_name', hubName);
-      }
+      if (error) {
+        console.error('RPC error, fallback to normal query:', error);
+        // Fallback
+        let query = supabase
+          .from(tableName)
+          .select('employee_name')
+          .not('employee_name', 'is', null);
 
-      const { data: employeesData } = await query;
+        if (hubName) {
+          query = query.eq('hub_name', hubName);
+        }
 
-      if (employeesData) {
-        const uniqueEmployees = Array.from(new Set(employeesData.map((row) => row.employee_name))).sort();
-        setEmployees(uniqueEmployees as string[]);
+        const { data: employeesData } = await query;
         
-        // Reset employee selection if current employee is not in the filtered list
+        if (employeesData) {
+          const uniqueEmployees = Array.from(new Set(employeesData.map((row) => row.employee_name))).sort();
+          setEmployees(uniqueEmployees);
+          
+          if (employeeName && !uniqueEmployees.includes(employeeName)) {
+            setEmployeeName('');
+          }
+        }
+      } else if (data) {
+        const uniqueEmployees = data.map((row: { employee_name: string }) => row.employee_name);
+        setEmployees(uniqueEmployees);
+        
         if (employeeName && !uniqueEmployees.includes(employeeName)) {
           setEmployeeName('');
         }
@@ -83,14 +105,24 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
 
   const fetchWeeks = async () => {
     try {
-      const { data } = await supabase
-        .from(tableName)
-        .select('week_label')
-        .not('week_label', 'is', null);
+      // Dùng RPC function
+      const { data, error } = await supabase
+        .rpc('get_distinct_weeks', { table_name: tableName });
 
-      if (data) {
-        const uniqueWeeks = Array.from(new Set(data.map((row) => row.week_label))).sort();
-        setWeeks(uniqueWeeks as string[]);
+      if (error) {
+        console.error('RPC error, fallback to normal query:', error);
+        // Fallback
+        const { data: weeksData } = await supabase
+          .from(tableName)
+          .select('week_label')
+          .not('week_label', 'is', null);
+
+        if (weeksData) {
+          const uniqueWeeks = Array.from(new Set(weeksData.map((row) => row.week_label))).sort();
+          setWeeks(uniqueWeeks);
+        }
+      } else if (data) {
+        setWeeks(data.map((row: { week_label: string }) => row.week_label));
       }
     } catch (error) {
       console.error('Error fetching weeks:', error);
