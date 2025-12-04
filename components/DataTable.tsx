@@ -11,7 +11,7 @@ interface DataTableProps {
 }
 
 export default function DataTable({ tableType }: DataTableProps) {
-  const { hubName, employeeName, searchText, weekLabel } = useFilterStore();
+  const { hubName, employeeName, searchText, weekLabel, status } = useFilterStore();
   const [data, setData] = useState<BinRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,7 +22,7 @@ export default function DataTable({ tableType }: DataTableProps) {
 
   useEffect(() => {
     fetchData();
-  }, [hubName, employeeName, searchText, weekLabel, tableType, currentPage]);
+  }, [hubName, employeeName, searchText, weekLabel, status, tableType, currentPage]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -30,6 +30,9 @@ export default function DataTable({ tableType }: DataTableProps) {
       let query = supabase.from(tableName).select('*', { count: 'exact' });
 
       // Apply filters
+      if (status) {
+        query = query.eq('status', status);
+      }
       if (weekLabel) {
         query = query.eq('week_label', weekLabel);
       }
@@ -67,6 +70,7 @@ export default function DataTable({ tableType }: DataTableProps) {
     try {
       let query = supabase.from(tableName).select('*');
 
+      if (status) query = query.eq('status', status);
       if (weekLabel) query = query.eq('week_label', weekLabel);
       if (hubName) query = query.eq('hub_name', hubName);
       if (employeeName) query = query.eq('employee_name', employeeName);
@@ -86,6 +90,45 @@ export default function DataTable({ tableType }: DataTableProps) {
   };
 
   const totalPages = Math.ceil(totalRecords / rowsPerPage);
+
+  const updateStatus = async (recordId: string, newStatus: 'pending' | 'picked_up' | 'returned') => {
+    try {
+      const { error } = await supabase
+        .from(tableName)
+        .update({ status: newStatus })
+        .eq('id', recordId);
+
+      if (error) throw error;
+
+      // Optimistic update
+      setData(prevData => 
+        prevData.map(record => 
+          record.id === recordId ? { ...record, status: newStatus } : record
+        )
+      );
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+    }
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'pending': return 'text-red-600 bg-red-50';
+      case 'picked_up': return 'text-yellow-600 bg-yellow-50';
+      case 'returned': return 'text-green-600 bg-green-50';
+      default: return 'text-red-600 bg-red-50';
+    }
+  };
+
+  const getStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'pending': return '🔴 Chưa lấy';
+      case 'picked_up': return '🟡 Đã lấy';
+      case 'returned': return '🟢 Đã trả kho';
+      default: return '🔴 Chưa lấy';
+    }
+  };
 
   if (loading) {
     return (
@@ -122,6 +165,7 @@ export default function DataTable({ tableType }: DataTableProps) {
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Trạng thái</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Mã BIN</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">HUB</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Mã Thu Hồi</th>
@@ -135,13 +179,24 @@ export default function DataTable({ tableType }: DataTableProps) {
           <tbody className="divide-y divide-gray-200">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                   Không tìm thấy dữ liệu
                 </td>
               </tr>
             ) : (
               data.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50 transition">
+                  <td className="px-4 py-3">
+                    <select
+                      value={record.status || 'pending'}
+                      onChange={(e) => updateStatus(record.id, e.target.value as 'pending' | 'picked_up' | 'returned')}
+                      className={`text-xs px-2 py-1 rounded-md border-0 font-medium ${getStatusColor(record.status)}`}
+                    >
+                      <option value="pending">🔴 Chưa lấy</option>
+                      <option value="picked_up">🟡 Đã lấy</option>
+                      <option value="returned">🟢 Đã trả kho</option>
+                    </select>
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium text-indigo-600">{record.bin_code}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.hub_name || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.ma_don || '-'}</td>
@@ -170,7 +225,7 @@ export default function DataTable({ tableType }: DataTableProps) {
                 <span className="text-sm font-medium text-indigo-600">{record.bin_code}</span>
                 <span className="text-xs bg-gray-100 px-2 py-1 rounded">{record.hub_name}</span>
               </div>
-              <div className="space-y-1 text-sm">
+              <div className="space-y-1 text-sm mb-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Mã Thu Hồi:</span>
                   <span className="text-gray-700 truncate ml-2">{record.ma_don || '-'}</span>
@@ -191,6 +246,27 @@ export default function DataTable({ tableType }: DataTableProps) {
                   <span className="text-gray-500">{record.cust_ward || '-'}</span>
                   <span className="text-gray-500">{record.cust_district || '-'}</span>
                 </div>
+              </div>
+              {/* Status buttons for mobile */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => updateStatus(record.id, 'pending')}
+                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'pending' || !record.status ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}
+                >
+                  🔴 Chưa lấy
+                </button>
+                <button
+                  onClick={() => updateStatus(record.id, 'picked_up')}
+                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'picked_up' ? 'bg-yellow-600 text-white' : 'bg-yellow-50 text-yellow-600 border border-yellow-200'}`}
+                >
+                  🟡 Đã lấy
+                </button>
+                <button
+                  onClick={() => updateStatus(record.id, 'returned')}
+                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'returned' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-600 border border-green-200'}`}
+                >
+                  🟢 Đã trả kho
+                </button>
               </div>
             </div>
           ))

@@ -24,6 +24,7 @@ export interface BinRecord {
   employee_id: number | null;
   employee_name: string | null;
   week_label: string;  // "Tuần 1 - Tháng 11"
+  status?: 'pending' | 'picked_up' | 'returned';  // Chưa lấy, Đã lấy, Đã trả kho
   import_date?: string;
   created_at?: string;
 }

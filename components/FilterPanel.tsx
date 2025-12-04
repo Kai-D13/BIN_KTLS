@@ -10,10 +10,11 @@ interface FilterPanelProps {
 }
 
 export default function FilterPanel({ tableType }: FilterPanelProps) {
-  const { hubName, employeeName, searchText, weekLabel, setHubName, setEmployeeName, setSearchText, setWeekLabel, resetFilters } = useFilterStore();
+  const { hubName, employeeName, searchText, weekLabel, status, setHubName, setEmployeeName, setSearchText, setWeekLabel, setStatus, resetFilters } = useFilterStore();
   const [hubs, setHubs] = useState<string[]>([]);
   const [employees, setEmployees] = useState<string[]>([]);
   const [weeks, setWeeks] = useState<string[]>([]);
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, picked_up: 0, returned: 0 });
   const [loading, setLoading] = useState(true);
 
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
@@ -21,6 +22,7 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
   useEffect(() => {
     fetchHubs();
     fetchWeeks();
+    fetchStatusCounts();
   }, [tableType]);
 
   // Fetch employees when hub changes
@@ -93,6 +95,25 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
     }
   };
 
+  const fetchStatusCounts = async () => {
+    try {
+      const { data } = await supabase
+        .from(tableName)
+        .select('status');
+
+      if (data) {
+        const counts = {
+          pending: data.filter(row => row.status === 'pending' || !row.status).length,
+          picked_up: data.filter(row => row.status === 'picked_up').length,
+          returned: data.filter(row => row.status === 'returned').length,
+        };
+        setStatusCounts(counts);
+      }
+    } catch (error) {
+      console.error('Error fetching status counts:', error);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -100,7 +121,25 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
         <h2 className="text-base sm:text-lg font-semibold text-gray-800">Bộ lọc</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        {/* Status Filter */}
+        <div>
+          <label htmlFor="status-select" className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+            📊 Trạng thái
+          </label>
+          <select
+            id="status-select"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="pending">🔴 Chưa lấy ({statusCounts.pending})</option>
+            <option value="picked_up">🟡 Đã lấy ({statusCounts.picked_up})</option>
+            <option value="returned">🟢 Đã trả kho ({statusCounts.returned})</option>
+          </select>
+        </div>
+
         {/* Week Filter */}
         <div>
           <label htmlFor="week-select" className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
@@ -183,7 +222,7 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
       </div>
 
       {/* Reset Button */}
-      {(weekLabel || hubName || employeeName || searchText) && (
+      {(status || weekLabel || hubName || employeeName || searchText) && (
         <div className="mt-4">
           <button
             onClick={resetFilters}
