@@ -33,11 +33,12 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
   const fetchHubs = async () => {
     setLoading(true);
     try {
-      // Fetch unique hubs
+      // Fetch unique hubs - tăng limit để lấy hết tất cả
       const { data: hubsData } = await supabase
         .from(tableName)
         .select('hub_name')
-        .not('hub_name', 'is', null);
+        .not('hub_name', 'is', null)
+        .limit(10000);
 
       if (hubsData) {
         const uniqueHubs = Array.from(new Set(hubsData.map((row) => row.hub_name))).sort();
@@ -52,11 +53,12 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
 
   const fetchEmployees = async () => {
     try {
-      // Build query for employees
+      // Build query for employees - tăng limit để lấy hết
       let query = supabase
         .from(tableName)
         .select('employee_name')
-        .not('employee_name', 'is', null);
+        .not('employee_name', 'is', null)
+        .limit(10000);
 
       // If hub is selected, filter employees by that hub
       if (hubName) {

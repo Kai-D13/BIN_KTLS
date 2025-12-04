@@ -5,6 +5,7 @@ import { useFilterStore } from '@/lib/store';
 import { supabase, BinRecord } from '@/lib/supabase';
 import { exportToExcel } from '@/lib/excel-parser';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import Toast from './Toast';
 
 interface DataTableProps {
   tableType: 'pending' | 'compensation';
@@ -16,6 +17,8 @@ export default function DataTable({ tableType }: DataTableProps) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const rowsPerPage = 50;
 
   const tableName = tableType === 'pending' ? 'bin_pickup_pending' : 'bin_compensation';
@@ -92,6 +95,7 @@ export default function DataTable({ tableType }: DataTableProps) {
   const totalPages = Math.ceil(totalRecords / rowsPerPage);
 
   const updateStatus = async (recordId: string, newStatus: 'pending' | 'picked_up' | 'returned') => {
+    setUpdatingStatus(recordId);
     try {
       const { error } = await supabase
         .from(tableName)
@@ -106,9 +110,24 @@ export default function DataTable({ tableType }: DataTableProps) {
           record.id === recordId ? { ...record, status: newStatus } : record
         )
       );
+
+      // Success feedback
+      const statusLabel = newStatus === 'pending' ? '🔴 Chưa lấy' : newStatus === 'picked_up' ? '🟡 Đã lấy' : '🟢 Đã trả kho';
+      setToast({ message: `✓ Cập nhật thành công: ${statusLabel}`, type: 'success' });
+      
+      // Clear loading state
+      setTimeout(() => {
+        setUpdatingStatus(null);
+      }, 500);
+
+      // Refresh data sau 600ms để đồng bộ với server và cập nhật summary cards
+      setTimeout(() => {
+        fetchData();
+      }, 600);
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+      setUpdatingStatus(null);
+      setToast({ message: '❌ Không thể cập nhật. Vui lòng thử lại.', type: 'error' });
     }
   };
 
@@ -187,15 +206,26 @@ export default function DataTable({ tableType }: DataTableProps) {
               data.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3">
-                    <select
-                      value={record.status || 'pending'}
-                      onChange={(e) => updateStatus(record.id, e.target.value as 'pending' | 'picked_up' | 'returned')}
-                      className={`text-xs px-2 py-1 rounded-md border-0 font-medium ${getStatusColor(record.status)}`}
-                    >
-                      <option value="pending">🔴 Chưa lấy</option>
-                      <option value="picked_up">🟡 Đã lấy</option>
-                      <option value="returned">🟢 Đã trả kho</option>
-                    </select>
+                    {updatingStatus === record.id ? (
+                      <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-600 font-medium">
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang lưu...
+                      </div>
+                    ) : (
+                      <select
+                        value={record.status || 'pending'}
+                        onChange={(e) => updateStatus(record.id, e.target.value as 'pending' | 'picked_up' | 'returned')}
+                        disabled={updatingStatus === record.id}
+                        className={`text-xs px-2 py-1.5 rounded-md border-0 font-medium cursor-pointer transition-all ${getStatusColor(record.status)} hover:shadow-md`}
+                      >
+                        <option value="pending">🔴 Chưa lấy</option>
+                        <option value="picked_up">🟡 Đã lấy</option>
+                        <option value="returned">🟢 Đã trả kho</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-indigo-600">{record.bin_code}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{record.hub_name || '-'}</td>
@@ -251,21 +281,72 @@ export default function DataTable({ tableType }: DataTableProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => updateStatus(record.id, 'pending')}
-                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'pending' || !record.status ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}
+                  disabled={updatingStatus === record.id}
+                  className={`flex-1 py-2.5 px-3 text-xs rounded-md font-medium transition-all duration-200 ${
+                    updatingStatus === record.id 
+                      ? 'opacity-50 cursor-wait' 
+                      : record.status === 'pending' || !record.status 
+                        ? 'bg-red-600 text-white shadow-md scale-105' 
+                        : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+                  }`}
                 >
-                  🔴 Chưa lấy
+                  {updatingStatus === record.id && (record.status === 'pending' || !record.status) ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang lưu...
+                    </span>
+                  ) : (
+                    <>🔴 Chưa lấy</>
+                  )}
                 </button>
                 <button
                   onClick={() => updateStatus(record.id, 'picked_up')}
-                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'picked_up' ? 'bg-yellow-600 text-white' : 'bg-yellow-50 text-yellow-600 border border-yellow-200'}`}
+                  disabled={updatingStatus === record.id}
+                  className={`flex-1 py-2.5 px-3 text-xs rounded-md font-medium transition-all duration-200 ${
+                    updatingStatus === record.id 
+                      ? 'opacity-50 cursor-wait' 
+                      : record.status === 'picked_up' 
+                        ? 'bg-yellow-600 text-white shadow-md scale-105' 
+                        : 'bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100'
+                  }`}
                 >
-                  🟡 Đã lấy
+                  {updatingStatus === record.id && record.status === 'picked_up' ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang lưu...
+                    </span>
+                  ) : (
+                    <>🟡 Đã lấy</>
+                  )}
                 </button>
                 <button
                   onClick={() => updateStatus(record.id, 'returned')}
-                  className={`flex-1 py-2 px-3 text-xs rounded-md font-medium transition ${record.status === 'returned' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-600 border border-green-200'}`}
+                  disabled={updatingStatus === record.id}
+                  className={`flex-1 py-2.5 px-3 text-xs rounded-md font-medium transition-all duration-200 ${
+                    updatingStatus === record.id 
+                      ? 'opacity-50 cursor-wait' 
+                      : record.status === 'returned' 
+                        ? 'bg-green-600 text-white shadow-md scale-105' 
+                        : 'bg-green-50 text-green-600 border border-green-200 hover:bg-green-100'
+                  }`}
                 >
-                  🟢 Đã trả kho
+                  {updatingStatus === record.id && record.status === 'returned' ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang lưu...
+                    </span>
+                  ) : (
+                    <>🟢 Đã trả kho</>
+                  )}
                 </button>
               </div>
             </div>
@@ -301,6 +382,15 @@ export default function DataTable({ tableType }: DataTableProps) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
