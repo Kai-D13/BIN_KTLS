@@ -97,18 +97,18 @@ export default function FilterPanel({ tableType }: FilterPanelProps) {
 
   const fetchStatusCounts = async () => {
     try {
-      const { data } = await supabase
-        .from(tableName)
-        .select('status');
+      // Fetch counts cho từng status bằng count queries (không load data)
+      const [pendingResult, pickedUpResult, returnedResult] = await Promise.all([
+        supabase.from(tableName).select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from(tableName).select('*', { count: 'exact', head: true }).eq('status', 'picked_up'),
+        supabase.from(tableName).select('*', { count: 'exact', head: true }).eq('status', 'returned'),
+      ]);
 
-      if (data) {
-        const counts = {
-          pending: data.filter(row => row.status === 'pending' || !row.status).length,
-          picked_up: data.filter(row => row.status === 'picked_up').length,
-          returned: data.filter(row => row.status === 'returned').length,
-        };
-        setStatusCounts(counts);
-      }
+      setStatusCounts({
+        pending: pendingResult.count || 0,
+        picked_up: pickedUpResult.count || 0,
+        returned: returnedResult.count || 0,
+      });
     } catch (error) {
       console.error('Error fetching status counts:', error);
     }

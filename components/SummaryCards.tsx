@@ -30,48 +30,65 @@ export default function SummaryCards({ tableType }: SummaryCardsProps) {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      let query = supabase.from(tableName).select('*', { count: 'exact' });
+      // Build base query for filters (không fetch data, chỉ dùng cho count)
+      const buildBaseQuery = () => {
+        let query = supabase.from(tableName).select('*', { count: 'exact', head: true });
+        
+        if (weekLabel) query = query.eq('week_label', weekLabel);
+        if (hubName) query = query.eq('hub_name', hubName);
+        if (employeeName) query = query.eq('employee_name', employeeName);
+        if (searchText) {
+          query = query.or(
+            `bin_code.ilike.%${searchText}%,cust_name.ilike.%${searchText}%,reference_code_of_so.ilike.%${searchText}%`
+          );
+        }
+        
+        return query;
+      };
 
-      // Apply filters
-      if (status) {
-        query = query.eq('status', status);
-      }
-      if (weekLabel) {
-        query = query.eq('week_label', weekLabel);
-      }
-      if (hubName) {
-        query = query.eq('hub_name', hubName);
-      }
-      if (employeeName) {
-        query = query.eq('employee_name', employeeName);
-      }
+      // Fetch counts cho từng status (parallel queries)
+      const [totalResult, pendingResult, pickedUpResult, returnedResult] = await Promise.all([
+        // Total count (nếu có status filter thì dùng nó, không thì count all)
+        status 
+          ? buildBaseQuery().eq('status', status)
+          : buildBaseQuery(),
+        // Pending count (chỉ khi không có status filter)
+        status ? Promise.resolve({ count: 0 }) : buildBaseQuery().eq('status', 'pending'),
+        // Picked up count
+        status ? Promise.resolve({ count: 0 }) : buildBaseQuery().eq('status', 'picked_up'),
+        // Returned count
+        status ? Promise.resolve({ count: 0 }) : buildBaseQuery().eq('status', 'returned'),
+      ]);
+
+      // Fetch unique customers và hubs (cần data nhưng giới hạn columns)
+      let dataQuery = supabase
+        .from(tableName)
+        .select('cust_name, hub_name')
+        .limit(10000); // Tăng limit để đảm bảo lấy hết
+
+      if (status) dataQuery = dataQuery.eq('status', status);
+      if (weekLabel) dataQuery = dataQuery.eq('week_label', weekLabel);
+      if (hubName) dataQuery = dataQuery.eq('hub_name', hubName);
+      if (employeeName) dataQuery = dataQuery.eq('employee_name', employeeName);
       if (searchText) {
-        query = query.or(
+        dataQuery = dataQuery.or(
           `bin_code.ilike.%${searchText}%,cust_name.ilike.%${searchText}%,reference_code_of_so.ilike.%${searchText}%`
         );
       }
 
-      const { data, error, count } = await query;
+      const { data } = await dataQuery;
 
-      if (error) throw error;
+      const uniqueCustomers = new Set(data?.map((row) => row.cust_name).filter(Boolean) || []);
+      const uniqueHubs = new Set(data?.map((row) => row.hub_name).filter(Boolean) || []);
 
-      if (data) {
-        const uniqueCustomers = new Set(data.map((row: BinRecord) => row.cust_name).filter(Boolean));
-        const uniqueHubs = new Set(data.map((row: BinRecord) => row.hub_name).filter(Boolean));
-
-        const pendingCount = data.filter(row => row.status === 'pending' || !row.status).length;
-        const pickedUpCount = data.filter(row => row.status === 'picked_up').length;
-        const returnedCount = data.filter(row => row.status === 'returned').length;
-
-        setStats({
-          totalBins: count || 0,
-          totalCustomers: uniqueCustomers.size,
-          totalHubs: uniqueHubs.size,
-          pendingCount,
-          pickedUpCount,
-          returnedCount,
-        });
-      }
+      setStats({
+        totalBins: totalResult.count || 0,
+        totalCustomers: uniqueCustomers.size,
+        totalHubs: uniqueHubs.size,
+        pendingCount: pendingResult.count || 0,
+        pickedUpCount: pickedUpResult.count || 0,
+        returnedCount: returnedResult.count || 0,
+      });
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
