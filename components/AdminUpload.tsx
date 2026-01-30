@@ -13,23 +13,24 @@ interface AdminUploadProps {
 const generateWeekOptions = () => {
   const options: { value: string; label: string }[] = [];
   const today = new Date();
-  
   // Get current month and year
   const currentMonth = today.getMonth() + 1; // 1-12
   const currentYear = today.getFullYear();
-  
-  // Generate options for current month and next 2 months
+  // Generate options for current month và 2 tháng tiếp theo
   for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
     const month = ((currentMonth - 1 + monthOffset) % 12) + 1;
     const year = currentYear + Math.floor((currentMonth - 1 + monthOffset) / 12);
-    
     for (let week = 1; week <= 4; week++) {
       const label = `Tuần ${week} - Tháng ${month}`;
       options.push({ value: label, label });
     }
   }
-  
-  return options.slice(0, 9); // Only return 9 weeks
+  // Thêm cố định 4 tuần của tháng 2 năm 2026
+  for (let week = 1; week <= 4; week++) {
+    const label = `Tuần ${week} - Tháng 2 - 2026`;
+    options.push({ value: label, label });
+  }
+  return options;
 };
 
 export default function AdminUpload({ tableType }: AdminUploadProps) {
